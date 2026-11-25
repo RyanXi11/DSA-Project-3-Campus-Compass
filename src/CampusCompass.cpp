@@ -586,9 +586,193 @@ void CampusCompass::verifySchedule(const string &ufid) const{
 }
 
 bool CampusCompass::ParseCommand(const string &command) {
-    // do whatever regex you need to parse validity
-    // hint: return a boolean for validation when testing. For example:
-    bool is_valid = true; // replace with your actual validity checking
+    string cleanCmd = command;
+    if (!cleanCmd.empty() && cleanCmd.back() == '\r')
+    {
+        cleanCmd.pop_back();
+    }
 
-    return is_valid;
+    istringstream ss(cleanCmd);
+    string action;
+    if (!(ss >> action))
+    {
+        cout << "unsuccessful\n";
+        return false;
+    }
+
+    if (action == "insert")
+    {
+        ss >> ws;
+        if (ss.peek() != '"')
+        {
+            cout << "unsuccessful\n";
+            return false;
+        }
+        ss.get(); // consume opening quote
+
+        string name;
+        if (!getline(ss, name, '"'))
+        {
+            cout << "unsuccessful\n";
+            return false;
+        }
+
+        string ufid;
+        int residenceId;
+        int numClasses;
+        if (!(ss >> ufid >> residenceId >> numClasses) || numClasses < 1 || numClasses > 6)
+        {
+            cout << "unsuccessful\n";
+            return false;
+        }
+
+        vector<string> classes;
+        string code;
+        for (int i = 0; i < numClasses; i++)
+        {
+            if (!(ss >> code))
+            {
+                cout << "unsuccessful\n";
+                return false;
+            }
+            classes.push_back(code);
+        }
+
+        string extra;
+        if (ss >> extra)
+        {
+            cout << "unsuccessful\n";
+            return false;
+        }
+
+        return insert(name, ufid, residenceId, classes);
+    }
+    else if (action == "remove")
+    {
+        string ufid, extra;
+        if (!(ss >> ufid) || (ss >> extra))
+        {
+            cout << "unsuccessful\n";
+            return false;
+        }
+        return remove(ufid);
+    }
+    else if (action == "dropClass")
+    {
+        string ufid, classCode, extra;
+        if (!(ss >> ufid >> classCode) || (ss >> extra))
+        {
+            cout << "unsuccessful\n";
+            return false;
+        }
+        return dropClass(ufid, classCode);
+    }
+    else if (action == "replaceClass")
+    {
+        string ufid, oldCode, newCode, extra;
+        if (!(ss >> ufid >> oldCode >> newCode) || (ss >> extra))
+        {
+            cout << "unsuccessful\n";
+            return false;
+        }
+        return replaceClass(ufid, oldCode, newCode);
+    }
+    else if (action == "removeClass")
+    {
+        string classCode, extra;
+        if (!(ss >> classCode) || (ss >> extra))
+        {
+            cout << "unsuccessful\n";
+            return false;
+        }
+        return removeClass(classCode);
+    }
+    else if (action == "toggleEdgesClosure")
+    {
+        int n;
+        if (!(ss >> n) || n <= 0)
+        {
+            cout << "unsuccessful\n";
+            return false;
+        }
+
+        vector<pair<int, int>> edges;
+        for (int i = 0; i < n; i++)
+        {
+            int u, v;
+            if (!(ss >> u >> v))
+            {
+                cout << "unsuccessful\n";
+                return false;
+            }
+            edges.push_back(make_pair(u, v));
+        }
+
+        string extra;
+        if (ss >> extra)
+        {
+            cout << "unsuccessful\n";
+            return false;
+        }
+
+        return toggleEdgesClosure(edges);
+    }
+    else if (action == "checkEdgeStatus")
+    {
+        int loc1, loc2;
+        string extra;
+        if (!(ss >> loc1 >> loc2) || (ss >> extra))
+        {
+            cout << "unsuccessful\n";
+            return false;
+        }
+        return checkEdgeStatus(loc1, loc2);
+    }
+    else if (action == "isConnected")
+    {
+        int loc1, loc2;
+        string extra;
+        if (!(ss >> loc1 >> loc2) || (ss >> extra))
+        {
+            cout << "unsuccessful\n";
+            return false;
+        }
+        return isConnected(loc1, loc2);
+    }
+    else if (action == "printShortestEdges")
+    {
+        string ufid, extra;
+        if (!(ss >> ufid) || (ss >> extra))
+        {
+            cout << "unsuccessful\n";
+            return false;
+        }
+        printShortestEdges(ufid);
+        return true;
+    }
+    else if (action == "printStudentZone")
+    {
+        string ufid, extra;
+        if (!(ss >> ufid) || (ss >> extra))
+        {
+            cout << "unsuccessful\n";
+            return false;
+        }
+        printStudentZone(ufid);
+        return true;
+    }
+    else if (action == "verifySchedule")
+    {
+        string ufid, extra;
+        if (!(ss >> ufid) || (ss >> extra))
+        {
+            cout << "unsuccessful\n";
+            return false;
+        }
+        verifySchedule(ufid);
+        return true;
+    }
+
+    cout << "unsuccessful\n";
+    return false;
 }
