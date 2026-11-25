@@ -7,6 +7,7 @@
 #include <queue>
 #include <unordered_set>
 #include <functional>
+#include <algorithm>
 
 using namespace std;
 
@@ -409,7 +410,7 @@ void CampusCompass::runDijkstra(int startNode, unordered_map<int, int> &dist, un
 
     while(!pq.empty()){
         int currentDist = pq.top().first;
-        int u = pq.top().second();
+        int u = pq.top().second;
         pq.pop();
 
         // Skip stale entries
@@ -515,7 +516,7 @@ void CampusCompass::printStudentZone(const string &ufid) const{
         inMST.insert(u);
         totalCost += weight;
 
-        unordered_map<int, vector<Edge>>:const_iterator it = adjList.find(u);
+        unordered_map<int, vector<Edge>>::const_iterator it = adjList.find(u);
         if(it == adjList.end()){
             continue;
         }
@@ -535,7 +536,54 @@ void CampusCompass::printStudentZone(const string &ufid) const{
     cout << "Student Zone Cost For " << student.name << ": " << totalCost << "\n";
 }
 
+void CampusCompass::verifySchedule(const string &ufid) const{
+    unordered_map<string, Student>::const_iterator sIt = students.find(ufid);
+    if(sIt == students.end()){
+        cout << "unsuccessful\n";
+        return;
+    }
 
+    const Student &student = sIt->second;
+    if(student.classes.size() <= 1){
+        cout << "unsuccessful\n";
+        return;
+    }
+
+    // Collect the student's classes into a vector so we can sort by start time
+    vector<string> sortedClasses(student.classes.begin(), student.classes.end());
+    sort(sortedClasses.begin(), sortedClasses.end(),
+        [this](const string &a, const string &b){
+            int startA = classMap.at(a).startMinutes;
+            int startB = classMap.at(b).startMinutes;
+            if(startA != startB){
+                return startA < startB;
+            }
+            return a < b; // Tie-breaker: lexicographical order
+        });
+
+    cout << "Schedule Check for " << student.name << ":\n";
+
+    for(size_t i = 0; i + 1 < sortedClasses.size(); i++){
+        const string &code1 = sortedClasses[i];
+        const string &code2 = sortedClasses[i + 1];
+
+        const ClassInfo &info1 = classMap.at(code1);
+        const ClassInfo &info2 = classMap.at(code2);
+        
+        int timeGap = info2.startMinutes - info1.endMinutes;
+
+        // Find shortest path from class 1's location to class 2's location using open edges
+        unordered_map<int, int> dist;
+        unordered_map<int, int> parent;
+        runDijkstra(info1.locationId, dist, parent);
+
+        unordered_map<int, int>::const_iterator dIt = dist.find(info2.locationId);
+        bool canMakeIt = (dIt != dist.end() && timeGap >= dIt->second);
+
+        cout << code1 << " - " << code2 << ": "
+             << (canMakeIt ? "successful" : "unsuccessful") << "\n";
+    }
+}
 
 bool CampusCompass::ParseCommand(const string &command) {
     // do whatever regex you need to parse validity
