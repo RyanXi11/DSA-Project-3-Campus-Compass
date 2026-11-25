@@ -56,6 +56,8 @@ private:
     void printStudentZone(const string &ufid) const;
     void verifySchedule(const string &ufid) const;
 
+    void runDijkstra(int startNode, unordered_map<int, int> &dist, unordered_map<int, int> &parent) const;
+
 public:
     // Think about what helper functions you will need in the algorithm
     CampusCompass(); // constructor

@@ -6,6 +6,7 @@
 #include <sstream>
 #include <queue>
 #include <unordered_set>
+#include <functional>
 
 using namespace std;
 
@@ -282,7 +283,7 @@ bool CampusCompass::removeClass(const string &classCode){
             droppedCount++;
             if(it->second.classes.empty()){
                 it = students.erase(it);
-                continue
+                continue;
             }
         }
         ++it;
@@ -331,7 +332,7 @@ bool CampusCompass::toggleEdgesClosure(const vector<pair<int, int>> &edges){
     return true;
 }
 
-bool CampusCompass::checkEdgeStatus(int loc1, int loc2){
+bool CampusCompass::checkEdgeStatus(int loc1, int loc2) const{
     unordered_map<int, vector<Edge>>::const_iterator it = adjList.find(loc1);
     if(it != adjList.end()){
         const vector<Edge> &neighbors = it->second;
@@ -398,6 +399,143 @@ bool CampusCompass::isConnected(int loc1, int loc2) const{
     cout << "unsuccessful\n";
     return false;
 }
+
+void CampusCompass::runDijkstra(int startNode, unordered_map<int, int> &dist, unordered_map<int, int> &parent) const{
+    // Min-heap storing distance {distance, nodeId}
+    priority_queue<pair<int, int>, vector<pair<int, int>>, greater<pair<int, int>>> pq;
+
+    dist[startNode] = 0;
+    pq.push(make_pair(0, startNode));
+
+    while(!pq.empty()){
+        int currentDist = pq.top().first;
+        int u = pq.top().second();
+        pq.pop();
+
+        // Skip stale entries
+        if(currentDist > dist[u]){
+            continue;
+        }
+
+        unordered_map<int, vector<Edge>>::const_iterator it = adjList.find(u);
+        if(it == adjList.end()){
+            continue;
+        }
+
+        const vector<Edge> &neighbors = it->second;
+        for(size_t i = 0; i < neighbors.size(); i++){
+            if(!neighbors[i].isOpen){
+                continue;
+            }
+
+            int v = neighbors[i].to;
+            int newDist = currentDist + neighbors[i].weight;
+
+            if(dist.find(v) == dist.end() || newDist < dist[v]){
+                dist[v] = newDist;
+                parent[v] = u;
+                pq.push(make_pair(newDist, v));
+            }
+        }
+    }
+}
+
+void CampusCompass::printShortestEdges(const string &ufid) const{
+    unordered_map<string, Student>::const_iterator sIt = students.find(ufid);
+    if(sIt == students.end()){
+        return;
+    }
+
+    const Student &student = sIt->second;
+    unordered_map<int, int> dist;
+    unordered_map<int, int> parent;
+    runDijkstra(student.residenceId, dist, parent);
+
+    cout << "Time For Shortest Edges: " << student.name << "\n";
+
+    // student.classes is a set, so it is already sorted lexicographically
+    for(set<string>::const_iterator cIt = student.classes.begin(); cIt != student.classes.end(); ++cIt){
+        const string &code = *cIt;
+        int classLoc = classMap.at(code).locationId;
+
+        unordered_map<int, int>::const_iterator dIt = dist.find(classLoc);
+        if(dIt == dist.end()){
+            cout << code << ": -1\n";
+        }else{
+            cout << code << ": " << dIt->second << "\n";
+        }
+    }
+}
+
+void CampusCompass::printStudentZone(const string &ufid) const{
+    unordered_map<string, Student>::const_iterator sIt = students.find(ufid);
+    if(sIt == students.end()){
+        return;
+    }
+
+    const Student &student = sIt->second;
+    unordered_map<int, int> dist;
+    unordered_map<int, int> parent;
+    runDijkstra(student.residenceId, dist, parent);
+
+    // 1. Collect all vertices along the shortest paths from residence to reachable classes
+    unordered_set<int> zoneNodes;
+    zoneNodes.insert(student.residenceId);
+    
+    for(set<string>::const_iterator cIt = student.classes.begin(); cIt != student.classes.end(); ++cIt){
+        int classLoc = classMap.at(*cIt).locationId;
+        if(dist.find(classLoc) == dist.end()){
+            continue; // Unreachable class
+        }
+
+        int curr = classLoc;
+        while(curr != student.residenceId){
+            zoneNodes.insert(curr);
+            curr = parent[curr];
+        }
+    }
+
+    // 2. Compute MST of the induced subgraph using Prim's algorithm
+    // Min-heap storing {edgeWeight, nodeId}
+    priority_queue<pair<int, int>, vector<pair<int, int>>, greater<pair<int, int>>> pq;
+    unordered_set<int> inMST;
+    int totalCost = 0;
+
+    pq.push(make_pair(0, student.residenceId));
+
+    while(!pq.empty() && inMST.size() < zoneNodes.size()){
+        int weight = pq.top().first;
+        int u = pq.top().second;
+        pq.pop();
+
+        if(inMST.find(u) != inMST.end()){
+            continue;
+        }
+
+        inMST.insert(u);
+        totalCost += weight;
+
+        unordered_map<int, vector<Edge>>:const_iterator it = adjList.find(u);
+        if(it == adjList.end()){
+            continue;
+        }
+
+        const vector<Edge> &neighbors = it->second;
+        for(size_t i = 0; i < neighbors.size(); i++){
+            int v = neighbors[i].to;
+            // Only use open edges that connect two nodes inside zoneNodes
+            if(neighbors[i].isOpen &&
+                zoneNodes.find(v) != zoneNodes.end() &&
+                inMST.find(v) == inMST.end()){
+                    pq.push(make_pair(neighbors[i].weight, v));
+            }
+        }
+    }
+
+    cout << "Student Zone Cost For " << student.name << ": " << totalCost << "\n";
+}
+
+
 
 bool CampusCompass::ParseCommand(const string &command) {
     // do whatever regex you need to parse validity
