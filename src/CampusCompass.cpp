@@ -122,7 +122,7 @@ bool CampusCompass::ParseCSV(const string &edges_filepath, const string &classes
     getline(classesFile, line); //skip header row
 
     while(getline(classesFile, line)){
-        if(!line.empty() && line.back() == 'r'){
+        if(!line.empty() && line.back() == '\r'){
             line.pop_back();
         }
 
@@ -152,7 +152,7 @@ bool CampusCompass::ParseCSV(const string &edges_filepath, const string &classes
 }
 
 bool CampusCompass::insert(const string &name, const string &ufid, int residenceId, const vector<string> &classes) {
-    if(!isValidName(name) || isValidUFID(ufid)){
+    if(!isValidName(name) || !isValidUFID(ufid)){
         cout << "unsuccessful\n";
         return false;
     }
@@ -295,7 +295,7 @@ bool CampusCompass::removeClass(const string &classCode){
         return false;
     }
 
-    cout << "successful\n";
+    cout << droppedCount << "\n";
     return true;
 }
 
