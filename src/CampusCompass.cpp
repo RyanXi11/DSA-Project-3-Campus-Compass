@@ -4,6 +4,8 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <queue>
+#include <unordered_set>
 
 using namespace std;
 
@@ -293,6 +295,108 @@ bool CampusCompass::removeClass(const string &classCode){
 
     cout << "successful\n";
     return true;
+}
+
+bool CampusCompass::toggleEdgesClosure(const vector<pair<int, int>> &edges){
+    for(size_t i = 0; i < edges.size(); i++){
+        int u = edges[i].first;
+        int v = edges[i].second;
+
+        // Toggle u -> v
+        unordered_map<int, vector<Edge>>::iterator itU = adjList.find(u);
+        if(itU != adjList.end()){
+            vector<Edge> &neighborsU = itU->second;
+            for(size_t j = 0; j < neighborsU.size(); j++){
+                if(neighborsU[j].to == v){
+                    neighborsU[j].isOpen = !neighborsU[j].isOpen;
+                    break;
+                }
+            }
+        }
+
+        // Toggle v -> u
+        unordered_map<int, vector<Edge>>::iterator itV = adjList.find(v);
+        if(itV != adjList.end()){
+            vector<Edge> &neighborsV = itV->second;
+            for(size_t j = 0; j < neighborsV.size(); j++){
+                if(neighborsV[j].to == u){
+                    neighborsV[j].isOpen = !neighborsV[j].isOpen;
+                    break;
+                }
+            }
+        }
+    }
+
+    cout << "successful\n";
+    return true;
+}
+
+bool CampusCompass::checkEdgeStatus(int loc1, int loc2){
+    unordered_map<int, vector<Edge>>::const_iterator it = adjList.find(loc1);
+    if(it != adjList.end()){
+        const vector<Edge> &neighbors = it->second;
+        for(size_t i = 0; i < neighbors.size(); i++){
+            if(neighbors[i].to == loc2){
+                if(neighbors[i].isOpen){
+                    cout << "open\n";
+                }
+                else
+                {
+                    cout << "closed\n";
+                }
+                return true;
+            }
+        }
+    }
+
+    cout << "DNE\n";
+    return true;
+}
+
+bool CampusCompass::isConnected(int loc1, int loc2) const{
+    if(adjList.find(loc1) == adjList.end() || adjList.find(loc2) == adjList.end()){
+        cout << "unsuccessful\n";
+        return false;
+    }
+    if(loc1 == loc2){
+        cout << "successful\n";
+        return true;
+    }
+
+    queue<int> q;
+    unordered_set<int> visited;
+
+    q.push(loc1);
+    visited.insert(loc1);
+
+    while(!q.empty()){
+        int current = q.front();
+        q.pop();
+
+        unordered_map<int, vector<Edge>>::const_iterator it = adjList.find(current);
+        if(it == adjList.end()){
+            continue;
+        }
+
+        const vector<Edge> &neighbors = it->second;
+        for(size_t i = 0; i < neighbors.size(); i++){
+            if(!neighbors[i].isOpen){
+                continue;
+            }
+            int nextNode = neighbors[i].to;
+            if(nextNode == loc2){
+                cout << "successful\n";
+                return true;
+            }
+            if(visited.find(nextNode) == visited.end()){
+                visited.insert(nextNode);
+                q.push(nextNode);
+            }
+        }
+    }
+
+    cout << "unsuccessful\n";
+    return false;
 }
 
 bool CampusCompass::ParseCommand(const string &command) {
